@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from '../supabaseClient'
-import { LogOut, Camera, FileText, Upload, AlertCircle, CheckCircle2 } from 'lucide-react'
+import { LogOut, Camera, FileText, Upload, AlertCircle, CheckCircle2, ScanLine } from 'lucide-react'
 
 // You would replace this with your deployed Render URL in production
 const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000"
