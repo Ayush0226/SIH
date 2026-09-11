@@ -138,9 +138,9 @@ export default function Dashboard({ session }) {
                     <div className="grid grid-cols-2 gap-4 mb-8">
                       {Object.entries(result.extracted_data).map(([k, v]) => (
                         v && k !== 'mrp_value' && k !== 'net_quantity_value' ? (
-                          <div key={k} className="p-3 bg-slate-50 rounded-lg border border-slate-100">
+                          <div key={k} className={`p-3 rounded-lg border ${String(v).includes("VIOLATION") || String(v).includes("NOT DETECTED") ? 'bg-red-50 border-red-200' : 'bg-slate-50 border-slate-100'}`}>
                             <span className="block text-xs text-slate-500 uppercase font-semibold mb-1">{k.replace(/_/g, ' ')}</span>
-                            <span className="block font-medium text-slate-900">{v}</span>
+                            <span className={`block font-medium ${String(v).includes("VIOLATION") ? 'text-red-700 font-bold' : 'text-slate-900'}`}>{v}</span>
                           </div>
                         ) : null
                       ))}
