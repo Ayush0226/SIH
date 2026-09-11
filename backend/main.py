@@ -134,43 +134,114 @@ async def get_history(current_user: dict = Depends(get_current_user)):
 
 def generate_pdf(filename, officer_email, category, data, report):
     c = canvas.Canvas(filename, pagesize=letter)
+    width, height = letter
+
+    # 1. Header Banner
+    c.setFillColorRGB(0.1, 0.22, 0.5)
+    c.rect(0, height - 90, width, 90, fill=1, stroke=0)
+    
+    c.setFillColorRGB(1, 1, 1)
     c.setFont("Helvetica-Bold", 16)
-    c.drawString(50, 750, "LEGAL METROLOGY COMPLIANCE REPORT")
+    c.drawString(40, height - 35, "GOVERNMENT OF INDIA - MINISTRY OF CONSUMER AFFAIRS")
+    c.setFont("Helvetica", 10)
+    c.drawString(40, height - 52, "DIRECTORATE OF LEGAL METROLOGY | PACKAGED COMMODITIES INSPECTION")
+    c.setFont("Helvetica-Oblique", 9)
+    c.drawString(40, height - 70, "Inspection Report generated under Legal Metrology (Packaged Commodities) Rules, 2011")
+
+    # 2. Metadata Box
+    c.setFillColorRGB(0.96, 0.97, 0.99)
+    c.setStrokeColorRGB(0.85, 0.88, 0.92)
+    c.roundRect(40, height - 165, width - 80, 60, 6, fill=1, stroke=1)
     
-    c.setFont("Helvetica", 12)
-    c.drawString(50, 720, f"Date: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M')}")
-    c.drawString(50, 700, f"Officer Email: {officer_email}")
-    c.drawString(50, 680, f"Product Category: {category}")
-    
-    c.drawString(50, 640, "1. EXTRACTED LABEL DECLARATIONS:")
-    y = 620
-    for key, value in data.items():
-        if value:
-            readable_key = key.replace("_", " ").title()
-            c.drawString(70, y, f"- {readable_key}: {value}")
-            y -= 20
+    c.setFillColorRGB(0.2, 0.2, 0.2)
+    c.setFont("Helvetica-Bold", 10)
+    c.drawString(55, height - 120, f"Inspection Date: {datetime.datetime.now().strftime('%d %B %Y, %I:%M %p')}")
+    c.drawString(55, height - 145, f"Officer Email: {officer_email}")
+    c.drawString(340, height - 120, f"Product Category: {category}")
+    c.drawString(340, height - 145, "Inspection Mode: Mobile OCR & Metrology Engine")
+
+    # 3. Compliance Verdict Box
+    is_pass = (report.get("status") == "PASS")
+    if is_pass:
+        c.setFillColorRGB(0.92, 0.98, 0.93)
+        c.setStrokeColorRGB(0.2, 0.65, 0.3)
+        status_text = "VERDICT: COMPLIANT (PASS)"
+        text_color = (0.05, 0.45, 0.15)
+    else:
+        c.setFillColorRGB(0.99, 0.93, 0.93)
+        c.setStrokeColorRGB(0.85, 0.2, 0.2)
+        status_text = "VERDICT: STATUTORY VIOLATION DETECTED"
+        text_color = (0.75, 0.1, 0.1)
+
+    c.roundRect(40, height - 215, width - 80, 40, 6, fill=1, stroke=1)
+    c.setFillColorRGB(*text_color)
+    c.setFont("Helvetica-Bold", 13)
+    c.drawString(55, height - 200, status_text)
+
+    # 4. Mandatory Extracted Declarations
+    c.setFillColorRGB(0.1, 0.2, 0.3)
+    c.setFont("Helvetica-Bold", 12)
+    c.drawString(40, height - 240, "1. MANDATORY PACKAGING DECLARATIONS (RULE 6)")
+
+    # Draw declarations table
+    y = height - 265
+    fields_order = [
+        ("product_name", "Common / Generic Commodity Name"),
+        ("mrp_raw", "Maximum Retail Price (MRP)"),
+        ("net_quantity_raw", "Net Quantity (with SI Unit)"),
+        ("usp_raw", "Unit Sale Price (USP)"),
+        ("mfg_date", "Date of Manufacture / Packing"),
+        ("batch_no", "Batch / Lot Identification"),
+        ("manufacturer_details", "Name & Address of Manufacturer / Packer"),
+        ("fssai_no", "FSSAI License No. (Food Commodities)"),
+        ("country_of_origin", "Country of Origin"),
+        ("consumer_care_phone", "Consumer Care Contact Number"),
+        ("consumer_care_email", "Consumer Care Email Address")
+    ]
+
+    for key, label in fields_order:
+        val = data.get(key)
+        if val:
+            c.setFont("Helvetica-Bold", 9)
+            c.setFillColorRGB(0.25, 0.3, 0.35)
+            c.drawString(45, y, f"{label}:")
             
+            c.setFont("Helvetica", 9)
+            c.setFillColorRGB(0.1, 0.1, 0.1)
+            # Truncate long addresses for single line
+            val_str = str(val)
+            if len(val_str) > 75:
+                val_str = val_str[:72] + "..."
+            c.drawString(245, y, val_str)
+            y -= 17
+
+    # 5. Violations & Observations
+    y -= 15
+    c.setFillColorRGB(0.1, 0.2, 0.3)
+    c.setFont("Helvetica-Bold", 12)
+    c.drawString(40, y, "2. STATUTORY OBSERVATIONS & ACTIONABLE CLAUSES")
     y -= 20
-    c.setFont("Helvetica-Bold", 14)
-    if report["status"] == "PASS":
-        c.setFillColorRGB(0, 0.6, 0)
+
+    if report.get("violations"):
+        c.setFont("Helvetica", 9)
+        c.setFillColorRGB(0.8, 0.1, 0.1)
+        for i, viol in enumerate(report["violations"], 1):
+            c.drawString(45, y, f"[{i}] {viol}")
+            y -= 16
     else:
-        c.setFillColorRGB(0.8, 0, 0)
-    c.drawString(50, y, f"2. COMPLIANCE VERDICT: {report['status']}")
-    
-    y -= 30
-    c.setFont("Helvetica", 12)
-    c.setFillColorRGB(0, 0, 0)
-    
-    if report["violations"]:
-        c.drawString(50, y, "Actionable Violations Noted under Rules, 2011:")
-        y -= 20
-        for i, v in enumerate(report["violations"], 1):
-            c.drawString(70, y, f"{i}. {v}")
-            y -= 20
-    else:
-        c.drawString(50, y, "All checked declarations appear compliant.")
-        
+        c.setFont("Helvetica-Bold", 10)
+        c.setFillColorRGB(0.1, 0.5, 0.2)
+        c.drawString(45, y, "All verified declarations comply with Legal Metrology (Packaged Commodities) Rules, 2011.")
+        y -= 18
+
+    # 6. Official Footer & Seal Notice
+    c.setStrokeColorRGB(0.85, 0.88, 0.92)
+    c.line(40, 60, width - 40, 60)
+    c.setFont("Helvetica", 8)
+    c.setFillColorRGB(0.5, 0.5, 0.5)
+    c.drawString(40, 45, "This document is an automated electronic inspection certificate pursuant to the Legal Metrology Act, 2009.")
+    c.drawString(40, 32, "Verified with SIH 26034 ComplyScan AI Metrology System.")
+
     c.save()
 
 @app.get("/api/download_report/{filename}")
