@@ -101,11 +101,13 @@ async def analyze_product(
         except Exception as e:
             print("DB Insert Error:", e)
 
+    base_url = os.environ.get("RENDER_EXTERNAL_URL", "https://complyscan-backend.onrender.com").rstrip("/")
+
     return {
         "id": scan_id,
         "extracted_data": extracted_data,
         "report": report,
-        "pdf_url": "http://127.0.0.1:8000" + pdf_url
+        "pdf_url": f"{base_url}{pdf_url}"
     }
 
 @app.get("/api/history")
@@ -118,9 +120,12 @@ async def get_history(current_user: dict = Depends(get_current_user)):
         response = supabase.table("scans").select("*").eq("officer_id", user_id).order("created_at", desc=True).execute()
         
         history = response.data
+        base_url = os.environ.get("RENDER_EXTERNAL_URL", "https://complyscan-backend.onrender.com").rstrip("/")
         for h in history:
             if h.get("pdf_url") and not h["pdf_url"].startswith("http"):
-                h["pdf_url"] = "http://127.0.0.1:8000" + h["pdf_url"]
+                h["pdf_url"] = f"{base_url}{h['pdf_url']}"
+            elif h.get("pdf_url") and "127.0.0.1:8000" in h["pdf_url"]:
+                h["pdf_url"] = h["pdf_url"].replace("http://127.0.0.1:8000", base_url)
                 
         return {"history": history}
     except Exception as e:

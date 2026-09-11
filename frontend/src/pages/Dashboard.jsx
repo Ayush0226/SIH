@@ -15,6 +15,17 @@ export default function Dashboard({ session }) {
 
   const handleLogout = () => supabase.auth.signOut()
 
+  const getPdfUrl = (url) => {
+    if (!url) return "#"
+    if (url.includes("127.0.0.1:8000")) {
+      return url.replace("http://127.0.0.1:8000", API_URL)
+    }
+    if (!url.startsWith("http")) {
+      return `${API_URL}${url}`
+    }
+    return url
+  }
+
   const fetchHistory = async () => {
     try {
       const response = await fetch(`${API_URL}/api/history`, {
@@ -112,7 +123,7 @@ export default function Dashboard({ session }) {
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 animate-in fade-in slide-in-from-bottom-4 duration-500">
                   <div className="flex justify-between items-start mb-6">
                     <h2 className="text-2xl font-bold text-slate-900">Inspection Report</h2>
-                    <a href={result.pdf_url} target="_blank" className="flex items-center gap-2 text-brand-600 bg-brand-50 px-4 py-2 rounded-full font-semibold hover:bg-brand-100 transition">
+                    <a href={getPdfUrl(result.pdf_url)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-brand-600 bg-brand-50 px-4 py-2 rounded-full font-semibold hover:bg-brand-100 transition">
                       <FileText size={18}/> PDF
                     </a>
                   </div>
@@ -123,16 +134,22 @@ export default function Dashboard({ session }) {
                   </div>
 
                   <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">1. Extracted Data</h3>
-                  <div className="grid grid-cols-2 gap-4 mb-8">
-                    {Object.entries(result.extracted_data).map(([k, v]) => (
-                      v && k !== 'mrp_value' && k !== 'net_quantity_value' ? (
-                        <div key={k} className="p-3 bg-slate-50 rounded-lg border border-slate-100">
-                          <span className="block text-xs text-slate-500 uppercase font-semibold mb-1">{k.replace(/_/g, ' ')}</span>
-                          <span className="block font-medium text-slate-900">{v}</span>
-                        </div>
-                      ) : null
-                    ))}
-                  </div>
+                  {Object.entries(result.extracted_data).some(([k, v]) => v && k !== 'mrp_value' && k !== 'net_quantity_value' && v !== 'Unreadable or Blank Image') ? (
+                    <div className="grid grid-cols-2 gap-4 mb-8">
+                      {Object.entries(result.extracted_data).map(([k, v]) => (
+                        v && k !== 'mrp_value' && k !== 'net_quantity_value' ? (
+                          <div key={k} className="p-3 bg-slate-50 rounded-lg border border-slate-100">
+                            <span className="block text-xs text-slate-500 uppercase font-semibold mb-1">{k.replace(/_/g, ' ')}</span>
+                            <span className="block font-medium text-slate-900">{v}</span>
+                          </div>
+                        ) : null
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="p-4 mb-8 bg-amber-50 border border-amber-200 text-amber-900 rounded-xl text-sm font-medium">
+                      ⚠️ No clear text could be recognized from this image. Please upload a clear, focused photo of the label declarations.
+                    </div>
+                  )}
 
                   <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">2. Legal Violations Noted</h3>
                   {result.report.violations.length > 0 ? (
@@ -177,7 +194,7 @@ export default function Dashboard({ session }) {
                         </span>
                       </td>
                       <td className="p-4 text-right">
-                        <a href={scan.pdf_url} target="_blank" className="text-brand-600 hover:text-brand-700 font-medium text-sm flex items-center justify-end gap-1">
+                        <a href={getPdfUrl(scan.pdf_url)} target="_blank" rel="noopener noreferrer" className="text-brand-600 hover:text-brand-700 font-medium text-sm flex items-center justify-end gap-1">
                           <FileText size={16}/> View
                         </a>
                       </td>
