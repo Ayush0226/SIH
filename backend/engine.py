@@ -1,18 +1,30 @@
 import re
-import easyocr
+import requests
 
 class OCRExtractor:
     def __init__(self):
-        # We enforce the AI model. No more silent try/except fallbacks.
-        # This will download the OCR models on the very first run (takes ~15 seconds).
-        print("Initializing EasyOCR AI Model...")
-        self.reader = easyocr.Reader(['en'])
-        print("EasyOCR AI Model Ready!")
+        # Using a free cloud OCR to bypass Render's 512MB RAM memory limits
+        self.api_key = 'helloworld' # Free OCR.space API key
+        print("Initialized Cloud OCR Engine!")
 
     def extract_information(self, filename: str):
-        # 1. AI Vision: Read raw text from the image
-        results = self.reader.readtext(filename, detail=0) 
-        raw_text = " ".join(results)
+        # 1. Send image to OCR.space API
+        print(f"Sending {filename} to Cloud OCR...")
+        with open(filename, 'rb') as f:
+            r = requests.post(
+                'https://api.ocr.space/parse/image',
+                files={'filename': f},
+                data={'apikey': self.api_key, 'language': 'eng'}
+            )
+        
+        result = r.json()
+        raw_text = ""
+        results_list = []
+        
+        if result.get('ParsedResults'):
+            raw_text = result['ParsedResults'][0].get('ParsedText', '').replace('\r', ' ').replace('\n', ' ')
+            results_list = raw_text.split()
+            
         print(f"--- RAW OCR TEXT EXTRACTED ---\n{raw_text}\n------------------------------")
         
         # 2. NLP/Regex: Structure the fields
@@ -33,8 +45,8 @@ class OCRExtractor:
         }
 
         # Attempt to grab Product Name (Usually the first prominent text)
-        if len(results) > 0:
-            extracted["product_name"] = results[0]
+        if len(results_list) > 0:
+            extracted["product_name"] = results_list[0]
 
         # Extract MRP
         mrp_match = re.search(r'(?i)(mrp|rs|₹|price)[\.\s:]*([\d\.]+)', raw_text)

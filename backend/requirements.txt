@@ -3,6 +3,6 @@ uvicorn
 python-multipart
 PyJWT
 reportlab
-easyocr
+requests
 supabase
 python-dotenv
